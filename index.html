@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <title>AZ-Kompass</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    :root{
+      --bg:#08111f; --card:#111c2d; --card2:#17253a; --txt:#f6f8fb; --muted:#9fb0c8;
+      --blue:#3d8bfd; --green:#35c77a; --yellow:#f2bf3f; --red:#ef5a63; --line:#263751;
+      --shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(180deg,#07101d,#0d1728);color:var(--txt);min-height:100vh}
+    .app{max-width:520px;margin:auto;padding:18px 14px 90px}
+    h1{font-size:24px;margin:0}
+    h2{font-size:17px;margin:0 0 12px}
+    .top{display:flex;justify-content:space-between;align-items:center;margin:4px 2px 16px}
+    .sub{color:var(--muted);font-size:13px}
+    .card{background:rgba(17,28,45,.96);border:1px solid var(--line);border-radius:24px;padding:16px;margin:12px 0;box-shadow:var(--shadow)}
+    .hero{text-align:center;padding:20px 16px}
+    .ring{width:190px;height:190px;margin:6px auto 12px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--green) 0deg,var(--green) 0deg,#22334c 0deg)}
+    .ringin{width:158px;height:158px;border-radius:50%;background:#0d1728;display:flex;flex-direction:column;justify-content:center;align-items:center}
+    .big{font-size:34px;font-weight:800}
+    .status{font-weight:700}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    button,input,select{font:inherit}
+    button{border:0;border-radius:16px;padding:14px 12px;font-weight:750;cursor:pointer}
+    .primary{background:var(--blue);color:white}
+    .secondary{background:#21324a;color:white}
+    .danger{background:#4a2229;color:#ffdce0}
+    .ghost{background:transparent;color:var(--txt);border:1px solid var(--line)}
+    .full{width:100%}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+    .pill{display:inline-block;border-radius:999px;padding:5px 9px;font-size:12px;background:#20304a;color:#dce7f7}
+    .ok{background:rgba(53,199,122,.15);color:#7be3a9}
+    .warn{background:rgba(242,191,63,.15);color:#ffd866}
+    .bad{background:rgba(239,90,99,.15);color:#ff9ca3}
+    .block{border-top:1px solid var(--line);padding:11px 0}
+    .block:first-child{border-top:0}
+    label{display:block;color:var(--muted);font-size:12px;margin:8px 0 5px}
+    input,select{width:100%;background:#0c1625;color:var(--txt);border:1px solid var(--line);border-radius:13px;padding:12px}
+    dialog{width:min(92vw,500px);border:1px solid var(--line);border-radius:22px;background:#111c2d;color:var(--txt);padding:18px}
+    dialog::backdrop{background:rgba(0,0,0,.66)}
+    .nav{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);width:min(calc(100% - 24px),500px);background:#111c2d;border:1px solid var(--line);border-radius:20px;padding:8px;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;box-shadow:var(--shadow)}
+    .nav button{padding:10px 6px;background:transparent;color:var(--muted)}
+    .nav button.active{background:#20304a;color:white}
+    .view{display:none}.view.active{display:block}
+    small{color:var(--muted)}
+    .metric{background:#0d1728;border-radius:16px;padding:12px}
+    .metric b{display:block;font-size:20px;margin-top:3px}
+    .notice{font-size:13px;line-height:1.45;color:#d7e1ee}
+    .redtxt{color:#ff9ca3}.greentxt{color:#7be3a9}.yellowtxt{color:#ffd866}
+    .toolbar{display:flex;gap:8px}
+    .toolbar button{padding:9px 11px}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div><h1>AZ-Kompass</h1><div class="sub" id="todayLabel"></div></div>
+    <div class="toolbar"><button class="ghost" onclick="openManual()">＋</button><button class="ghost" onclick="openSettings()">☰</button></div>
+  </div>
+
+  <section id="viewCompass" class="view active">
+    <div class="card hero">
+      <div class="ring" id="ring"><div class="ringin"><div class="big" id="workTime">0:00</div><div class="sub">Arbeitszeit heute</div></div></div>
+      <div class="status" id="dayStatus">Bereit</div>
+      <div class="sub" id="activeText">Kein Timer aktiv</div>
+    </div>
+
+    <div class="actions">
+      <button id="travelBtn" class="secondary" onclick="toggleTimer('Wegzeit')">Wegzeit starten</button>
+      <button id="workBtn" class="primary" onclick="toggleTimer('Arbeit')">Arbeitszeit starten</button>
+    </div>
+    <button class="full ghost" style="margin-top:10px" onclick="toggleTimer('Rufbereitschaftseinsatz')">Rufbereitschaftseinsatz starten</button>
+
+    <div class="card">
+      <h2>Ruhezeit-Kompass</h2>
+      <div id="restPanel"></div>
+    </div>
+
+    <div class="card">
+      <div class="row"><h2>Heute</h2><span class="pill" id="blockCount">0 Blöcke</span></div>
+      <div id="blocks"></div>
+    </div>
+  </section>
+
+  <section id="viewWeek" class="view">
+    <div class="card">
+      <h2>Woche</h2>
+      <div id="weekList"></div>
+    </div>
+  </section>
+
+  <section id="viewRest" class="view">
+    <div class="card">
+      <h2>Nächster Arbeitsbeginn</h2>
+      <div id="restDetail"></div>
+    </div>
+    <div class="card">
+      <h2>Geplanten Start prüfen</h2>
+      <label>Datum und Uhrzeit</label>
+      <input id="plannedStart" type="datetime-local">
+      <button class="primary full" style="margin-top:10px" onclick="checkPlanned()">Prüfen</button>
+      <div id="plannedResult" style="margin-top:12px"></div>
+    </div>
+  </section>
+</div>
+
+<nav class="nav">
+  <button class="active" onclick="showView('Compass',this)">Kompass</button>
+  <button onclick="showView('Week',this)">Woche</button>
+  <button onclick="showView('Rest',this)">Ruhezeit</button>
+</nav>
+
+<dialog id="manualDialog">
+  <h2>Zeitblock eintragen</h2>
+  <label>Typ</label>
+  <select id="mType">
+    <option>Arbeit</option><option>Wegzeit</option><option>Rufbereitschaftseinsatz</option>
+  </select>
+  <label>Start</label><input id="mStart" type="datetime-local">
+  <label>Ende</label><input id="mEnd" type="datetime-local">
+  <div class="grid" style="margin-top:14px">
+    <button class="ghost" onclick="manualDialog.close()">Abbrechen</button>
+    <button class="primary" onclick="saveManual()">Speichern</button>
+  </div>
+</dialog>
+
+<dialog id="settingsDialog">
+  <h2>Einstellungen</h2>
+  <label>Tägliches Warnziel</label>
+  <select id="warnTarget"><option value="8">8 Stunden</option><option value="9" selected>9 Stunden</option><option value="9.5">9:30 Stunden</option><option value="10">10 Stunden</option></select>
+  <label>Ruhezeit-Modell</label>
+  <select id="restMode"><option value="bv" selected>BV Bereitschaftsdienst</option><option value="11h">Immer 11 Stunden</option></select>
+  <p class="notice">Die App ist eine persönliche Warn- und Orientierungshilfe. Maßgeblich bleiben Arbeitszeitgesetz, Betriebsvereinbarung und betriebliche Vorgaben.</p>
+  <button class="primary full" onclick="saveSettings()">Speichern</button>
+</dialog>
+
+<script>
+const KEY='azkompass_v1';
+let state=JSON.parse(localStorage.getItem(KEY)||'null')||{blocks:[],active:null,settings:{warnTarget:9,restMode:'bv'}};
+const fmtTime=d=>new Intl.DateTimeFormat('de-DE',{hour:'2-digit',minute:'2-digit'}).format(d);
+const fmtDate=d=>new Intl.DateTimeFormat('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'}).format(d);
+const dur=b=>Math.max(0,new Date(b.end||Date.now())-new Date(b.start));
+const hm=ms=>{let m=Math.floor(ms/60000),h=Math.floor(m/60);return `${h}:${String(m%60).padStart(2,'0')}`};
+const localInput=d=>{let z=new Date(d-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,16)}
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function dayKey(d){return new Date(d).toLocaleDateString('sv-SE')}
+function todaysBlocks(){let k=dayKey(new Date());return state.blocks.filter(b=>dayKey(b.start)===k)}
+function workBlocks(arr=todaysBlocks()){return arr.filter(b=>['Arbeit','Wegzeit','Rufbereitschaftseinsatz'].includes(b.type))}
+function total(arr=todaysBlocks()){
+  let sum=workBlocks(arr).reduce((s,b)=>s+dur(b),0);
+  if(state.active){
+    const now=new Date(), start=new Date(state.active.start);
+    const midnight=new Date(now); midnight.setHours(0,0,0,0);
+    sum += Math.max(0, now-Math.max(start,midnight));
+  }
+  return sum;
+}
+function lastCompletedWork(){
+  const all=state.blocks.filter(b=>['Arbeit','Wegzeit','Rufbereitschaftseinsatz'].includes(b.type)&&b.end).sort((a,b)=>new Date(b.end)-new Date(a.end));
+  return all[0]||null;
+}
+function dayTotalFor(block){
+  let k=dayKey(block.start);
+  return state.blocks.filter(b=>dayKey(b.start)===k&&['Arbeit','Wegzeit','Rufbereitschaftseinsatz'].includes(b.type)).reduce((s,b)=>s+dur(b),0);
+}
+function restInfo(){
+  const last=lastCompletedWork();
+  if(!last) return null;
+  const end=new Date(last.end), t=dayTotalFor(last)/3600000;
+  const normal=new Date(end.getTime()+11*3600000);
+  const canShort=state.settings.restMode==='bv' && t<=12;
+  const minimum=canShort?new Date(end.getTime()+6*3600000):normal;
+  return {last,end,t,normal,minimum,canShort};
+}
+function render(){
+  document.getElementById('todayLabel').textContent=new Intl.DateTimeFormat('de-DE',{weekday:'long',day:'2-digit',month:'long'}).format(new Date());
+  const ms=total(), h=ms/3600000;
+  workTime.textContent=hm(ms);
+  let color=h<=8?'var(--green)':h<=10?'var(--yellow)':'var(--red)';
+  ring.style.background=`conic-gradient(${color} ${Math.min(h/10*360,360)}deg,#22334c 0deg)`;
+  dayStatus.textContent=h>10?'10-Stunden-Grenze überschritten':h>=state.settings.warnTarget?'Warnziel erreicht':h>8?'Über 8 Stunden':'Im grünen Bereich';
+  dayStatus.className='status '+(h>10?'redtxt':h>8?'yellowtxt':'greentxt');
+  activeText.textContent=state.active?`${state.active.type} läuft seit ${fmtTime(new Date(state.active.start))}`:'Kein Timer aktiv';
+  workBtn.textContent=state.active?.type==='Arbeit'?'Arbeitszeit stoppen':'Arbeitszeit starten';
+  travelBtn.textContent=state.active?.type==='Wegzeit'?'Wegzeit stoppen':'Wegzeit starten';
+  renderBlocks(); renderRest(); renderWeek();
+}
+function toggleTimer(type){
+  const now=new Date();
+  if(state.active){
+    state.blocks.push({id:crypto.randomUUID(),type:state.active.type,start:state.active.start,end:now.toISOString()});
+    const same=state.active.type===type;
+    state.active=null;
+    if(!same) state.active={type,start:now.toISOString()};
+  }else state.active={type,start:now.toISOString()};
+  save();render();
+}
+function renderBlocks(){
+  const bs=todaysBlocks().sort((a,b)=>new Date(b.start)-new Date(a.start));
+  blockCount.textContent=`${bs.length} ${bs.length===1?'Block':'Blöcke'}`;
+  blocks.innerHTML=bs.length?bs.map((b,i)=>`<div class="block"><div class="row"><div><b>${b.type}</b><div class="sub">${fmtTime(new Date(b.start))}–${fmtTime(new Date(b.end))} · ${hm(dur(b))}</div></div><button class="danger" onclick="delBlock('${b.id}')">×</button></div></div>`).join(''):'<div class="sub">Noch keine Einträge.</div>';
+}
+function delBlock(id){state.blocks=state.blocks.filter(b=>b.id!==id);save();render()}
+function renderRest(){
+  const r=restInfo();
+  if(!r){restPanel.innerHTML='<div class="sub">Noch kein abgeschlossener Arbeitsblock vorhanden.</div>';restDetail.innerHTML=restPanel.innerHTML;return}
+  const now=new Date(), left=r.normal-now;
+  let html=`<div class="grid">
+    <div class="metric"><small>Regulär 11 h</small><b>${fmtTime(r.normal)}</b><small>${fmtDate(r.normal)}</small></div>
+    <div class="metric"><small>${r.canShort?'BV-Minimum 6 h':'Minimum'}</small><b>${fmtTime(r.minimum)}</b><small>${fmtDate(r.minimum)}</small></div>
+  </div>
+  <p class="notice">Letzter Arbeitsblock endete <b>${fmtDate(r.end)} um ${fmtTime(r.end)}</b>. Erfasste Arbeits-/Einsatzzeit dieses Tages: <b>${r.t.toFixed(2).replace('.',',')} h</b>.</p>`;
+  if(r.t>12) html+=`<p class="bad pill">Über 12 h: keine Verkürzung der Ruhezeit.</p>`;
+  else if(r.canShort) html+=`<p class="warn pill">Verkürzung nach BV grundsätzlich möglich, mindestens 6 h ununterbrochen.</p>`;
+  if(now<r.normal) html+=`<p><b>Noch ${hm(Math.max(0,left))}</b> bis zur regulären 11-h-Ruhezeit.</p>`;
+  else html+=`<p class="greentxt"><b>11 Stunden Ruhezeit sind erreicht.</b></p>`;
+  restPanel.innerHTML=html;restDetail.innerHTML=html;
+}
+function checkPlanned(){
+  const r=restInfo(), v=plannedStart.value;
+  if(!r||!v){plannedResult.innerHTML='<span class="bad pill">Bitte zuerst einen Zeitpunkt wählen.</span>';return}
+  const p=new Date(v), restH=(p-r.end)/3600000;
+  let txt='';
+  if(restH>=11) txt=`<span class="ok pill">Start möglich · ${restH.toFixed(1).replace('.',',')} h Ruhezeit</span>`;
+  else if(!r.canShort) txt=`<span class="bad pill">Nicht zulässig: 11 h Ruhezeit erforderlich.</span>`;
+  else if(restH<6) txt=`<span class="bad pill">Nicht zulässig: unter 6 h ununterbrochene Ruhezeit.</span>`;
+  else if(restH>=9) txt=`<span class="warn pill">Verkürzte Ruhezeit: Ausgleich innerhalb 5 Tagen beachten.</span>`;
+  else txt=`<span class="warn pill">Stark verkürzte Ruhezeit: Ausgleich innerhalb 3 Tagen beachten.</span>`;
+  plannedResult.innerHTML=txt;
+}
+function openManual(){
+  const now=new Date(), later=new Date(now.getTime()+60*60000);
+  mStart.value=localInput(now);mEnd.value=localInput(later);manualDialog.showModal()
+}
+function saveManual(){
+  const s=new Date(mStart.value),e=new Date(mEnd.value);
+  if(!mStart.value||!mEnd.value||e<=s){alert('Bitte gültige Start- und Endzeit eingeben.');return}
+  state.blocks.push({id:crypto.randomUUID(),type:mType.value,start:s.toISOString(),end:e.toISOString()});
+  save();manualDialog.close();render();
+}
+function openSettings(){warnTarget.value=state.settings.warnTarget;restMode.value=state.settings.restMode;settingsDialog.showModal()}
+function saveSettings(){state.settings.warnTarget=Number(warnTarget.value);state.settings.restMode=restMode.value;save();settingsDialog.close();render()}
+function renderWeek(){
+  const today=new Date(), dow=(today.getDay()+6)%7, mon=new Date(today); mon.setDate(today.getDate()-dow); mon.setHours(0,0,0,0);
+  let rows='';
+  for(let i=0;i<7;i++){
+    let d=new Date(mon);d.setDate(mon.getDate()+i);let k=dayKey(d);
+    let arr=state.blocks.filter(b=>dayKey(b.start)===k);
+    rows+=`<div class="block"><div class="row"><b>${fmtDate(d)}</b><span>${hm(totalStatic(arr))}</span></div></div>`;
+  }
+  weekList.innerHTML=rows;
+}
+function totalStatic(arr){return workBlocks(arr).reduce((s,b)=>s+dur(b),0)}
+function showView(name,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view'+name).classList.add('active');
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+}
+state.blocks=state.blocks.map(b=>({...b,id:b.id||crypto.randomUUID()}));save();render();setInterval(render,30000);
+
+</script>
+</body>
+</html>

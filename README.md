@@ -1,18 +1,20 @@
-# AZ-Kompass
+# AZ-Kompass Android
 
-Mobile Arbeitszeit- und Ruhezeit-App zur übersichtlichen Warnung vor kritischen Arbeitszeitgrenzen.
+Android-Hülle für den AZ-Kompass-Prototypen.
 
-## Ziele
+## Enthalten
+- mobile Android-App (WebView)
+- lokale Speicherung im WebView-Speicher
+- Arbeitszeit, Wegzeit, Rufbereitschaftseinsatz
+- Ruhezeit-Kompass
+- GitHub Actions Workflow zum automatischen Erstellen einer installierbaren Debug-APK
 
-- Arbeitszeit und Wegzeit erfassen
-- Pausen automatisch berücksichtigen
-- Warnungen bei 9:00 h, 9:30 h und 10:00 h
-- 11 Stunden Ruhezeit überwachen
-- Wochen- und 24-Wochen-Auswertung
-- Mobile-first Oberfläche
-- Dark Mode / Light Mode
-- Späterer Android-APK-Build
+## APK mit GitHub Actions erstellen
+1. Projekt in ein GitHub-Repository hochladen.
+2. Unter **Actions** den Workflow **Build AZ-Kompass APK** öffnen.
+3. **Run workflow** ausführen oder auf `main` pushen.
+4. Nach erfolgreichem Build das Artifact **AZ-Kompass-debug-apk** herunterladen.
+5. Darin liegt `app-debug.apk`.
 
-## Projektstatus
-
-Grundstruktur angelegt. Die eigentliche App-Logik folgt schrittweise.
+## Lokal mit Android Studio
+Projektordner in Android Studio öffnen und **Build > Build APK(s)** ausführen.
