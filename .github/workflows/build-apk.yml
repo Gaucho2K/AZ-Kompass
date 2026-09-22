@@ -1,4 +1,4 @@
-name: Build AZ-Kompass APK
+name: Build AZ-Kompass Signed APK
 
 on:
   workflow_dispatch:
@@ -24,11 +24,22 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Android-Projekt zusammensetzen
+      - name: Prepare stable signing key
         shell: bash
         run: |
           set -e
+          test -n "${{ secrets.AZ_KEYSTORE_B64_V2 }}" || (echo "Missing AZ_KEYSTORE_B64_V2" && exit 1)
+          test -n "${{ secrets.AZ_KEYSTORE_PASSWORD_V2 }}" || (echo "Missing AZ_KEYSTORE_PASSWORD_V2" && exit 1)
+          echo "${{ secrets.AZ_KEYSTORE_B64_V2 }}" | base64 --decode > "$RUNNER_TEMP/az-kompass-release-v2.jks"
+          keytool -list \
+            -keystore "$RUNNER_TEMP/az-kompass-release-v2.jks" \
+            -storepass "${{ secrets.AZ_KEYSTORE_PASSWORD_V2 }}" \
+            -alias azkompass >/dev/null
 
+      - name: Assemble Android project
+        shell: bash
+        run: |
+          set -e
           mkdir -p buildapp/app/src/main/java/de/azkompass/app
           mkdir -p buildapp/app/src/main/assets
           mkdir -p buildapp/app/src/main/res/drawable
@@ -37,25 +48,67 @@ jobs:
           cp settings.gradle buildapp/settings.gradle
           cp gradle.properties buildapp/gradle.properties
 
-          cat > buildapp/build.gradle <<'EOF'
+          cat > buildapp/build.gradle <<'GRADLE'
           plugins {
               id 'com.android.application' version '8.7.3' apply false
           }
-          EOF
+          GRADLE
 
-          cp build.gradle buildapp/app/build.gradle
+          cat > buildapp/app/build.gradle <<'GRADLE'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'de.azkompass.app'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'de.azkompass.app'
+                  minSdk 26
+                  targetSdk 35
+                  versionCode 1000 + Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
+                  versionName "0.5.${System.getenv('GITHUB_RUN_NUMBER') ?: '1'}"
+              }
+
+              signingConfigs {
+                  release {
+                      storeFile file(System.getenv('AZ_KEYSTORE_FILE'))
+                      storePassword System.getenv('AZ_KEYSTORE_PASSWORD')
+                      keyAlias 'azkompass'
+                      keyPassword System.getenv('AZ_KEYSTORE_PASSWORD')
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                      signingConfig signingConfigs.release
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          GRADLE
+
           cp AndroidManifest.xml buildapp/app/src/main/AndroidManifest.xml
           cp MainActivity.java buildapp/app/src/main/java/de/azkompass/app/MainActivity.java
           cp index.html buildapp/app/src/main/assets/index.html
           cp ic_launcher.xml buildapp/app/src/main/res/drawable/ic_launcher.xml
           cp styles.xml buildapp/app/src/main/res/values/styles.xml
 
-      - name: Build debug APK
-        run: gradle -p buildapp :app:assembleDebug
+      - name: Build signed release APK
+        env:
+          AZ_KEYSTORE_FILE: ${{ runner.temp }}/az-kompass-release-v2.jks
+          AZ_KEYSTORE_PASSWORD: ${{ secrets.AZ_KEYSTORE_PASSWORD_V2 }}
+        run: gradle -p buildapp :app:assembleRelease
 
-      - name: Upload APK
+      - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
-          name: AZ-Kompass-debug-apk
-          path: buildapp/app/build/outputs/apk/debug/app-debug.apk
+          name: AZ-Kompass-release-apk
+          path: buildapp/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
